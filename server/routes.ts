@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertReviewSchema, insertChangingStationSchema } from "@shared/schema";
+import { insertReviewSchema, insertChangingStationSchema } from "./schema";
 import { z } from "zod";
 import polyline from "polyline";
 
