@@ -6,7 +6,7 @@ import { z } from "zod";
 import polyline from "polyline";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Apple MapKit token endpoint (replaces Google Maps)
+  // Apple MapKit token endpoint
   app.get("/api/apple-maps-token", (req, res) => {
     // In production, generate JWT token for Apple MapKit
     // For demo, return empty (MapKit will fall back to demo mode)
@@ -76,14 +76,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get reviews for a station (handles both numeric IDs and Google Place IDs)
+  // Get reviews for a station (handles both numeric IDs and Foursquare IDs)
   app.get("/api/changing-stations/:id/reviews", async (req, res) => {
     try {
       const stationId = req.params.id;
       
-      // Check if this is a Google Places ID (starts with 'google_')
-      if (stationId.startsWith('google_')) {
-        // For Google Places, return empty array initially - these are potential locations
+      // Check if this is a Foursquare ID (starts with 'fsq_')
+      if (stationId.startsWith('fsq_')) {
+        // For Foursquare places, return empty array initially - these are potential locations
         // Users need to add changing station reviews to verify them
         res.json([]);
         return;
@@ -102,10 +102,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create a new review
+  // NEW: Create a new review with auto-station creation
   app.post("/api/reviews", async (req, res) => {
     try {
-      const validatedData = insertReviewSchema.parse(req.body);
+      const { placeData, ...reviewData } = req.body;
+      
+      // If placeData is provided (from Foursquare), create/find station first
+      if (placeData) {
+        const station = await storage.findOrCreateStationFromPlace(placeData);
+        reviewData.stationId = station.id;
+      }
+      
+      const validatedData = insertReviewSchema.parse(reviewData);
       const review = await storage.createReview(validatedData);
       res.status(201).json(review);
     } catch (error) {
@@ -116,108 +124,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Search Google Places for potential changing station locations
-  app.get("/api/places/search", async (req, res) => {
+  // Foursquare Places search for changing stations
+  app.get("/api/foursquare/nearby", async (req, res) => {
     try {
-      const { lat, lng, radius = 2000, type = 'restaurant' } = req.query;
-      
-      if (!lat || !lng) {
-        return res.status(400).json({ message: "Latitude and longitude are required" });
+      const lat = parseFloat(req.query.lat as string);
+      const lng = parseFloat(req.query.lng as string);
+      const radius = req.query.radius ? parseFloat(req.query.radius as string) : 16;
+      const query = req.query.q as string;
+
+      if (isNaN(lat) || isNaN(lng)) {
+        return res.status(400).json({ message: "Valid latitude and longitude are required" });
       }
 
-      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ message: "Google Maps API key not configured" });
-      }
-
-      // Search for places that commonly have changing stations
-      const searchTypes = ['restaurant', 'shopping_mall', 'store', 'cafe', 'supermarket', 'department_store'];
-      const selectedType = searchTypes.includes(type as string) ? type : 'restaurant';
+      // Use storage's Foursquare integration
+      const places = await storage.searchPlacesNearby(lat, lng, radius, query);
       
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/nearbysearch/json?` +
-        `location=${lat},${lng}&radius=${radius}&type=${selectedType}&` +
-        `key=${apiKey}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`Google Places API error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      // Transform Foursquare data to match our changing station format
+      const transformedPlaces = places.map(place => ({
+        id: `fsq_${place.fsq_id}`,
+        fsq_id: place.fsq_id,
+        businessName: place.name,
+        address: place.location?.formatted_address || place.location?.address || "Address not available",
+        latitude: place.geocodes?.main?.latitude || place.geocodes?.roof?.latitude,
+        longitude: place.geocodes?.main?.longitude || place.geocodes?.roof?.longitude,
+        categories: place.categories,
+        distance: place.distance,
+        rating: 0,
+        totalReviews: 0, // These are potential locations, not verified changing stations
+        isVerified: false,
+        isAccessible: null,
+        hasChangingStation: null, // Unknown until verified by users
+        hasSupplies: null,
+        isPrivate: false,
+        isGuaranteedChain: place.isGuaranteedChain,
+        changingStationScore: place.changingStationScore,
+        source: "foursquare"
+      }));
       
-      // Filter for establishments more likely to have changing stations
-      const filtered = data.results?.filter((place: any) => {
-        const hasGoodRating = place.rating >= 3.5;
-        const name = place.name?.toLowerCase() || '';
-        
-        // Businesses guaranteed to have changing stations
-        const guaranteedChains = [
-          'target', 'walmart', 'loves', 'love\'s', 'panera', 'panera bread', 
-          'buc-ee', 'buc-ees', 'kroger', 'meijer', 'chick-fil-a'
-        ];
-        
-        const isGuaranteedChain = guaranteedChains.some(chain => name.includes(chain));
-        
-        // Other likely chains
-        const isLikelyChain = name.includes('starbucks') || 
-                            name.includes('mcdonald') ||
-                            name.includes('whole foods') ||
-                            place.types?.includes('shopping_mall');
-        
-        const hasHighPriceLevel = place.price_level >= 2;
-        
-        // Prioritize guaranteed chains, then other criteria
-        return isGuaranteedChain || (hasGoodRating && (isLikelyChain || hasHighPriceLevel || place.types?.includes('shopping_mall')));
-      }) || [];
-
-      // Sort to prioritize guaranteed chains first
-      filtered.sort((a: any, b: any) => {
-        const aName = a.name?.toLowerCase() || '';
-        const bName = b.name?.toLowerCase() || '';
-        const guaranteedChains = [
-          'target', 'walmart', 'loves', 'love\'s', 'panera', 'panera bread', 
-          'buc-ee', 'buc-ees', 'kroger', 'meijer', 'chick-fil-a'
-        ];
-        
-        const aIsGuaranteed = guaranteedChains.some(chain => aName.includes(chain));
-        const bIsGuaranteed = guaranteedChains.some(chain => bName.includes(chain));
-        
-        if (aIsGuaranteed && !bIsGuaranteed) return -1;
-        if (!aIsGuaranteed && bIsGuaranteed) return 1;
-        return (b.rating || 0) - (a.rating || 0); // Then by rating
-      });
-
       res.json({
-        results: filtered.slice(0, 15), // Limit results
-        status: data.status
+        results: transformedPlaces,
+        location: { lat, lng },
+        radius: `${radius}km`,
+        totalResults: transformedPlaces.length
       });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error) {
+      console.error("Foursquare search error:", error);
+      res.status(500).json({ message: "Failed to search Foursquare places" });
     }
   });
 
-  // Create a new changing station from Google Places data
-  app.post("/api/changing-stations/from-place", async (req, res) => {
+  // Create a new changing station from Foursquare data
+  app.post("/api/changing-stations/from-foursquare", async (req, res) => {
     try {
-      const { place, hasChangingStation = true } = req.body;
+      const { place } = req.body;
       
-      if (!place || !place.place_id) {
-        return res.status(400).json({ message: "Valid Google Place data is required" });
+      if (!place || !place.fsq_id) {
+        return res.status(400).json({ message: "Valid Foursquare Place data is required" });
       }
 
       const stationData = {
         businessName: place.name,
-        address: place.vicinity || place.formatted_address || "Address not available",
-        latitude: place.geometry.location.lat,
-        longitude: place.geometry.location.lng,
+        address: place.location?.formatted_address || place.location?.address || "Address not available",
+        latitude: place.geocodes?.main?.latitude || place.geocodes?.roof?.latitude,
+        longitude: place.geocodes?.main?.longitude || place.geocodes?.roof?.longitude,
         isAccessible: null, // To be verified by users
         isPrivate: false, // Assume public unless specified
         hasSupplies: null, // To be verified by users
-        businessHours: place.opening_hours?.open_now !== undefined 
-          ? (place.opening_hours.open_now ? "Open" : "Closed") 
-          : null,
-        isOpen: place.opening_hours?.open_now || null
+        businessHours: null,
+        isOpen: null
       };
 
       const validatedData = insertChangingStationSchema.parse(stationData);
@@ -231,62 +205,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to create changing station" });
     }
   });
-
-  // US-only Google Places search for changing stations
-  app.get("/api/places/nationwide", async (req, res) => {
-    try {
-      const lat = parseFloat(req.query.lat as string);
-      const lng = parseFloat(req.query.lng as string);
-      const radius = req.query.radius ? parseFloat(req.query.radius as string) : 16;
-      const query = req.query.q as string;
-
-      if (isNaN(lat) || isNaN(lng)) {
-        return res.status(400).json({ message: "Valid latitude and longitude are required" });
-      }
-
-      // Use storage's US-only Google Places integration
-      const places = await storage.searchPlacesNearby(lat, lng, radius, query);
-      
-      // Transform Google Places data to match our changing station format
-      const transformedPlaces = places.map(place => ({
-        id: `google_${place.place_id}`,
-        businessName: place.name,
-        address: place.vicinity || place.formatted_address || "Address not available",
-        latitude: place.geometry.location.lat,
-        longitude: place.geometry.location.lng,
-        rating: place.rating || 0,
-        totalReviews: 0, // These are potential locations, not verified changing stations
-        isVerified: false,
-        isAccessible: null,
-        hasChangingStation: null, // Unknown until verified by users
-        hasSupplies: null,
-        isPrivate: false,
-        businessHours: place.opening_hours?.open_now !== undefined 
-          ? (place.opening_hours.open_now ? "Open" : "Closed") 
-          : null,
-        isOpen: place.opening_hours?.open_now || null,
-        source: "google_places",
-        placeId: place.place_id
-      }));
-      
-      res.json({
-        results: transformedPlaces,
-        location: { lat, lng },
-        radius: `${radius}km`,
-        totalResults: transformedPlaces.length,
-        coverage: "US-only"
-      });
-    } catch (error) {
-      console.error("US places search error:", error);
-      res.status(500).json({ message: "Failed to search US places" });
-    }
-  });
-
-  app.get('/api/apple-maps-token', (req, res) => {
-    res.json('');
-  });
-
-
 
   // OpenRouteService proxy endpoint for exact roadway routing
   app.post('/api/directions', async (req, res) => {
@@ -383,7 +301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({ error: 'No route found' });
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('OpenRouteService error:', error);
       res.status(500).json({ error: 'Routing service unavailable', details: error.message });
     }
