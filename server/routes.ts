@@ -140,9 +140,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const places = await storage.searchPlacesNearby(lat, lng, radius, query);
       
       // Transform Foursquare data to match our changing station format
-      const transformedPlaces = places.map(place => ({
-        id: place.fsq_id || `fsq_${Math.random().toString(36).substr(2, 9)}`,
-        fsq_id: place.fsq_id,
+      const transformedPlaces = places
+  .filter(place => place.fsq_id) // Remove places without IDs
+  .map(place => ({
+    id: `fsq_${place.fsq_id}`,
+    fsq_id: place.fsq_id,
         businessName: place.name,
         address: place.location?.formatted_address || place.location?.address || "Address not available",
         latitude: place.geocodes?.main?.latitude || place.geocodes?.roof?.latitude,
