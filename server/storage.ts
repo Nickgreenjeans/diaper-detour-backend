@@ -259,88 +259,89 @@ export class MemStorage implements IStorage {
   }
 
   // Foursquare API integration
-  async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?: string): Promise<any[]> {
-    const foursquareApiKey = process.env.FOURSQUARE_API_KEY;
-    if (!foursquareApiKey) {
-      console.warn('Foursquare API key not found - returning empty results');
-      return [];
-    }
-
-    try {
-      const radiusMeters = radiusKm * 1000; // Convert to meters
-      
-      // Foursquare categories likely to have changing facilities
-      // Category IDs from Foursquare Places API
-      const categories = [
-        '13065', // Restaurant
-        '17069', // Shopping Mall
-        '17000', // Retail
-        '13003', // Fast Food
-        '17127', // Gas Station
-        '10027', // Zoo
-        '10001', // Arts & Entertainment
-        '18021', // Gym / Fitness
-        '13035', // Coffee Shop
-        '17031', // Department Store
-        '17043', // Supermarket
-      ].join(',');
-
-      // Build Foursquare API request
-      const foursquareUrl = `https://api.foursquare.com/v3/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&categories=${categories}&limit=50`;
-      
-      console.log('Fetching from Foursquare:', foursquareUrl);
-
-      const response = await fetch(foursquareUrl, {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': foursquareApiKey
-        }
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Foursquare API error:', response.status, errorText);
-        return [];
-      }
-
-      const data = await response.json();
-      
-      if (!data.results || data.results.length === 0) {
-        console.log('No Foursquare results found');
-        return [];
-      }
-
-      // Transform Foursquare results to match our format
-      const transformedResults = data.results.map((place: any) => ({
-        fsq_id: place.fsq_id,
-        name: place.name,
-        location: place.location,
-        categories: place.categories,
-        distance: place.distance,
-        geocodes: place.geocodes,
-        // Add flags for our app
-        isGuaranteedChain: this.isGuaranteedChain(place.name),
-        changingStationScore: this.calculateChangingStationScore(place)
-      }));
-
-      // Sort by relevance
-      return transformedResults.sort((a, b) => {
-        // Guaranteed chains first
-        if (a.isGuaranteedChain && !b.isGuaranteedChain) return -1;
-        if (!a.isGuaranteedChain && b.isGuaranteedChain) return 1;
-        // Then by score
-        if (a.changingStationScore !== b.changingStationScore) {
-          return b.changingStationScore - a.changingStationScore;
-        }
-        // Finally by distance
-        return (a.distance || Infinity) - (b.distance || Infinity);
-      });
-
-    } catch (error) {
-      console.error('Error searching Foursquare:', error);
-      return [];
-    }
+async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?: string): Promise<any[]> {
+  const foursquareApiKey = process.env.FOURSQUARE_API_KEY;
+  if (!foursquareApiKey) {
+    console.warn('Foursquare API key not found - returning empty results');
+    return [];
   }
+
+  try {
+    const radiusMeters = radiusKm * 1000; // Convert to meters
+    
+    // Foursquare categories likely to have changing facilities
+    const categories = [
+      '13065', // Restaurant
+      '17069', // Shopping Mall
+      '17000', // Retail
+      '13003', // Fast Food
+      '17127', // Gas Station
+      '10027', // Zoo
+      '10001', // Arts & Entertainment
+      '18021', // Gym / Fitness
+      '13035', // Coffee Shop
+      '17031', // Department Store
+      '17043', // Supermarket
+    ].join(',');
+
+    // Build Foursquare API request - using the correct endpoint
+    const foursquareUrl = `https://api.foursquare.com/v3/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&categories=${categories}&limit=50&fields=fsq_id,name,location,categories,distance,geocodes`;
+    
+    console.log('Fetching from Foursquare:', foursquareUrl);
+
+    const response = await fetch(foursquareUrl, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': foursquareApiKey
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Foursquare API error:', response.status, errorText);
+      return [];
+    }
+
+    const data = await response.json();
+    
+    if (!data.results || data.results.length === 0) {
+      console.log('No Foursquare results found');
+      return [];
+    }
+
+    console.log('Foursquare returned', data.results.length, 'places');
+
+    // Transform Foursquare results to match our format
+    const transformedResults = data.results.map((place: any) => ({
+      fsq_id: place.fsq_id,
+      name: place.name,
+      location: place.location,
+      categories: place.categories,
+      distance: place.distance,
+      geocodes: place.geocodes,
+      // Add flags for our app
+      isGuaranteedChain: this.isGuaranteedChain(place.name),
+      changingStationScore: this.calculateChangingStationScore(place)
+    }));
+
+    // Sort by relevance
+    return transformedResults.sort((a, b) => {
+      // Guaranteed chains first
+      if (a.isGuaranteedChain && !b.isGuaranteedChain) return -1;
+      if (!a.isGuaranteedChain && b.isGuaranteedChain) return 1;
+      // Then by score
+      if (a.changingStationScore !== b.changingStationScore) {
+        return b.changingStationScore - a.changingStationScore;
+      }
+      // Finally by distance
+      return (a.distance || Infinity) - (b.distance || Infinity);
+    });
+
+  } catch (error) {
+    console.error('Error searching Foursquare:', error);
+    return [];
+  }
+}
 
   // Calculate likelihood score for changing station availability
   private calculateChangingStationScore(place: any): number {
