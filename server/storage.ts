@@ -285,8 +285,7 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
     ].join(',');
 
     // Build Foursquare API request - using the correct endpoint
-    const foursquareUrl = `https://places-api.foursquare.com/v1/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&categories=${categories}&limit=50&fields=fsq_id,name,location,categories,distance,geocodes`;
-    
+    const foursquareUrl = `https://places-api.foursquare.com/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&categories=${categories}&limit=50`;
     console.log('Fetching from Foursquare:', foursquareUrl);
 
     const response = await fetch(foursquareUrl, {
