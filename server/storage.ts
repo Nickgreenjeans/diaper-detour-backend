@@ -289,11 +289,12 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
     console.log('Fetching from Foursquare:', foursquareUrl);
 
     const response = await fetch(foursquareUrl, {
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': foursquareApiKey
-      }
-    });
+  headers: {
+    'Accept': 'application/json',
+    'Authorization': `Bearer ${foursquareApiKey}`,
+    'X-Places-Api-Version': '2025-06-17'
+  }
+});
 
     if (!response.ok) {
       const errorText = await response.text();
