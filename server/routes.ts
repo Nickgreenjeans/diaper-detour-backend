@@ -141,7 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Transform Foursquare data to match our changing station format
       const transformedPlaces = places.map(place => ({
-        id: `fsq_${place.fsq_id}`,
+        id: place.fsq_id || `fsq_${Math.random().toString(36).substr(2, 9)}`,
         fsq_id: place.fsq_id,
         businessName: place.name,
         address: place.location?.formatted_address || place.location?.address || "Address not available",
