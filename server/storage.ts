@@ -286,7 +286,7 @@ export class MemStorage implements IStorage {
       ].join(',');
 
       // Build Foursquare API request
-      const foursquareUrl = `https://api.foursquare.com/v3/places/nearby?ll=${lat},${lng}&radius=${radiusMeters}&categories=${categories}&limit=50`;
+      const foursquareUrl = `https://api.foursquare.com/v3/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&categories=${categories}&limit=50`;
       
       console.log('Fetching from Foursquare:', foursquareUrl);
 
