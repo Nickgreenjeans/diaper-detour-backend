@@ -317,6 +317,8 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
       fsq_id: place.fsq_place_id,
       name: place.name,
       location: place.location,
+      latitude: place.latitude,
+      longitude: place.longitude,
       categories: place.categories,
       distance: place.distance,
       geocodes: place.geocodes,
