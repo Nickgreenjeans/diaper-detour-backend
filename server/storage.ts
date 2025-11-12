@@ -314,7 +314,7 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
 
     // Transform Foursquare results to match our format
     const transformedResults = data.results.map((place: any) => ({
-      fsq_id: place.fsq_id,
+      fsq_id: place.fsq_place_id,
       name: place.name,
       location: place.location,
       categories: place.categories,
