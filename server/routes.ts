@@ -138,11 +138,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use storage's Foursquare integration
       const places = await storage.searchPlacesNearby(lat, lng, radius, query);
+
+      console.log('Raw places from storage:', places.length);
+      console.log('First place structure:', JSON.stringify(places[0], null, 2));
       
       // Transform Foursquare data to match our changing station format
-      const transformedPlaces = places
-  .filter(place => place.fsq_id) // Remove places without IDs
-  .map(place => ({
+      const transformedPlaces = places.map(place => ({
     id: `fsq_${place.fsq_id}`,
     fsq_id: place.fsq_id,
         businessName: place.name,
