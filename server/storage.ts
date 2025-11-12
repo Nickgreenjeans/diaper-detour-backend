@@ -303,6 +303,7 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
     }
 
     const data = await response.json();
+    console.log('Raw Foursquare API response - first result:', JSON.stringify(data.results[0], null, 2));
     
     if (!data.results || data.results.length === 0) {
       console.log('No Foursquare results found');
