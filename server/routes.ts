@@ -220,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Origin and destination coordinates required' });
       }
 
-      const apiKey = process.env.OPENROUTESERVICE_API_KEY;
+      const apiKey = process.env.OPENROUTE_API_KEY;
       console.log('API Key exists:', !!apiKey);
       
       if (!apiKey) {
