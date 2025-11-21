@@ -248,19 +248,19 @@ if (stationReviews.length >= 1) {
   // Check if this is a guaranteed chain
   const isGuaranteed = this.isGuaranteedChain(placeData.businessName);
   
-  // Create new station from Foursquare data
   const stationData: InsertChangingStation = {
-    businessName: placeData.businessName,
-    address: placeData.address,
-    latitude: placeData.latitude,
-    longitude: placeData.longitude,
-    isAccessible: null,
-    isPrivate: false,
-    hasSupplies: null,
-    businessHours: placeData.businessHours || null,
-    isOpen: placeData.isOpen || null,
-    isVerified: isGuaranteed ? false : false  // Guaranteed chains start unverified but get marked differently
-  };
+  businessName: placeData.businessName,
+  address: placeData.address,
+  latitude: placeData.latitude,
+  longitude: placeData.longitude,
+  isAccessible: null,
+  isPrivate: false,
+  hasSupplies: null,
+  businessHours: placeData.businessHours || null,
+  isOpen: placeData.isOpen || null,
+  isVerified: false,
+  isGuaranteedChain: isGuaranteed
+};
   
   const newStation = await this.createChangingStation(stationData);
   
