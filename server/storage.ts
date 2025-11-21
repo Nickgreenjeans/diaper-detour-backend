@@ -215,18 +215,21 @@ export class MemStorage implements IStorage {
     station.negativeReports = stationReviews.filter(review => review.reportNoChangingStation === true).length;
     
     // Update verification status based on reviews
-    if (stationReviews.length >= 1) {
-      const positiveReviews = stationReviews.filter(review => review.confirmHasChangingStation === true).length;
-      const negativeReviews = station.negativeReports;
-      
-      if (negativeReviews > positiveReviews) {
-        station.hasChangingStation = false;
-      } else if (positiveReviews > 0) {
-        station.hasChangingStation = true;
-        station.isVerified = true;
-      }
+if (stationReviews.length >= 1) {
+  const positiveReviews = stationReviews.filter(review => review.confirmHasChangingStation === true).length;
+  const negativeReviews = station.negativeReports;
+  
+  if (negativeReviews > positiveReviews) {
+    station.hasChangingStation = false;
+  } else if (positiveReviews > 0) {
+    station.hasChangingStation = true;
+    // Only mark as verified if it's NOT a guaranteed chain
+    // Guaranteed chains stay marked as guaranteed even after verification
+    if (!this.isGuaranteedChain(station.businessName)) {
+      station.isVerified = true;
     }
   }
+}
 
   // NEW: Find or create station from Foursquare place data
   async findOrCreateStationFromPlace(placeData: any): Promise<ChangingStation> {
