@@ -233,33 +233,43 @@ if (stationReviews.length >= 1) {
 
   // NEW: Find or create station from Foursquare place data
   async findOrCreateStationFromPlace(placeData: any): Promise<ChangingStation> {
-    // Check if station already exists by searching for matching coordinates
-    const existingStations = await this.getChangingStations();
-    const existing = existingStations.find(station => 
-      Math.abs(station.latitude - placeData.latitude) < 0.0001 &&
-      Math.abs(station.longitude - placeData.longitude) < 0.0001
-    );
-    
-    if (existing) {
-      return existing;
-    }
-    
-    // Create new station from Foursquare data
-    const stationData: InsertChangingStation = {
-      businessName: placeData.businessName,
-      address: placeData.address,
-      latitude: placeData.latitude,
-      longitude: placeData.longitude,
-      isAccessible: null,
-      isPrivate: false,
-      hasSupplies: null,
-      businessHours: placeData.businessHours || null,
-      isOpen: placeData.isOpen || null,
-      isVerified: false
-    };
-    
-    return await this.createChangingStation(stationData);
+  // Check if station already exists by searching for matching coordinates
+  const existingStations = await this.getChangingStations();
+  const existing = existingStations.find(station => 
+    Math.abs(station.latitude - placeData.latitude) < 0.0001 &&
+    Math.abs(station.longitude - placeData.longitude) < 0.0001
+  );
+  
+  if (existing) {
+    return existing;
   }
+  
+  // Check if this is a guaranteed chain
+  const isGuaranteed = this.isGuaranteedChain(placeData.businessName);
+  
+  // Create new station from Foursquare data
+  const stationData: InsertChangingStation = {
+    businessName: placeData.businessName,
+    address: placeData.address,
+    latitude: placeData.latitude,
+    longitude: placeData.longitude,
+    isAccessible: null,
+    isPrivate: false,
+    hasSupplies: null,
+    businessHours: placeData.businessHours || null,
+    isOpen: placeData.isOpen || null,
+    isVerified: isGuaranteed ? false : false  // Guaranteed chains start unverified but get marked differently
+  };
+  
+  const newStation = await this.createChangingStation(stationData);
+  
+  // Add isGuaranteedChain property if it's a guaranteed chain
+  // This ensures the frontend can identify it properly
+  return {
+    ...newStation,
+    isGuaranteedChain: isGuaranteed
+  } as ChangingStation;
+}
 
   // Foursquare API integration
 async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?: string): Promise<any[]> {
