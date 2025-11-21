@@ -7,7 +7,7 @@
     "dev": "tsx server/index.ts",
     "build": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "node dist/index.js",
-    "db:push": "drizzle-kit push"
+    "db:push": "npx drizzle-kit push"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
