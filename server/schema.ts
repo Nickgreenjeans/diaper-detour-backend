@@ -19,6 +19,7 @@ export const changingStations = pgTable("changing_stations", {
   hasChangingStation: boolean("has_changing_station").default(true),
   negativeReports: integer("negative_reports").default(0),
   isVerified: boolean("is_verified").default(false),
+  isGuaranteedChain: boolean("is_guaranteed_chain").default(false),
 });
 
 export const reviews = pgTable("reviews", {
