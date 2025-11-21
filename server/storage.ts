@@ -69,6 +69,7 @@ export class MemStorage implements IStorage {
         businessHours: '{"mon":"8:00AM-10:00PM","tue":"8:00AM-10:00PM","wed":"8:00AM-10:00PM","thu":"8:00AM-10:00PM","fri":"8:00AM-10:00PM","sat":"8:00AM-10:00PM","sun":"8:00AM-9:00PM"}',
         isOpen: true,
         isVerified: true
+        isGuaranteedChain: true
       }
     ];
 
