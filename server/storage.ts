@@ -1,3 +1,5 @@
+import { db } from './db';
+import { eq, sql as drizzleSql, like, and } from 'drizzle-orm';
 import { changingStations, reviews, type ChangingStation, type InsertChangingStation, type Review, type InsertReview } from "@shared/schema";
 
 export interface IStorage {
@@ -391,4 +393,233 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
   }
 }
 
-export const storage = new MemStorage();
+   // DbStorage Class
+export class DbStorage implements IStorage {
+  private guaranteedChains = [
+    'Target', 'Walmart', 'Kroger', 'Meijer', 'Chick-fil-A', 
+    'Panera Bread', "Love's Travel Stop", 'Pilot Flying J',
+    "Buc-ee's", 'Barnes & Noble', 'Buy Buy Baby', 'Babies"R"Us',
+    'Whole Foods Market', 'Wegmans', 'H-E-B', 'Publix',
+    'Home Depot', "Lowe's"
+  ];
+
+  private isGuaranteedChain(businessName: string): boolean {
+    return this.guaranteedChains.some(chain => 
+      businessName.toLowerCase().includes(chain.toLowerCase())
+    );
+  }
+
+  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
+
+  async getChangingStations(): Promise<ChangingStation[]> {
+    return await db.select().from(changingStations);
+  }
+
+  async getChangingStation(id: number): Promise<ChangingStation | undefined> {
+    const result = await db.select().from(changingStations).where(eq(changingStations.id, id));
+    return result[0];
+  }
+
+  async createChangingStation(station: InsertChangingStation): Promise<ChangingStation> {
+    const result = await db.insert(changingStations).values(station).returning();
+    return result[0];
+  }
+
+  async searchChangingStations(query: string): Promise<ChangingStation[]> {
+    const normalizedQuery = `%${query.toLowerCase()}%`;
+    return await db.select().from(changingStations).where(
+      like(changingStations.businessName, normalizedQuery)
+    );
+  }
+
+  async getChangingStationsNearby(lat: number, lng: number, radiusKm: number = 16): Promise<ChangingStation[]> {
+    const stations = await db.select().from(changingStations);
+    return stations.filter(station => {
+      const distance = this.calculateDistance(lat, lng, station.latitude, station.longitude);
+      return distance <= radiusKm;
+    }).sort((a, b) => 
+      this.calculateDistance(lat, lng, a.latitude, a.longitude) - 
+      this.calculateDistance(lat, lng, b.latitude, b.longitude)
+    );
+  }
+
+  async getReviewsForStation(stationId: number): Promise<Review[]> {
+    return await db.select().from(reviews).where(eq(reviews.stationId, stationId));
+  }
+
+  async createReview(review: InsertReview): Promise<Review> {
+    const result = await db.insert(reviews).values(review).returning();
+    await this.updateStationRating(review.stationId);
+    return result[0];
+  }
+
+  async updateStationRating(stationId: number): Promise<void> {
+    const station = await this.getChangingStation(stationId);
+    if (!station) return;
+
+    const stationReviews = await this.getReviewsForStation(stationId);
+    
+    if (stationReviews.length === 0) {
+      await db.update(changingStations)
+        .set({ 
+          averageRating: 0, 
+          reviewCount: 0,
+          negativeReports: 0 
+        })
+        .where(eq(changingStations.id, stationId));
+      return;
+    }
+
+    const totalRating = stationReviews.reduce((sum, review) => sum + review.rating, 0);
+    const averageRating = Math.round((totalRating / stationReviews.length) * 10) / 10;
+    const negativeReports = stationReviews.filter(r => r.reportNoChangingStation === true).length;
+    const positiveReviews = stationReviews.filter(r => r.confirmHasChangingStation === true).length;
+
+    const updates: any = {
+      averageRating,
+      reviewCount: stationReviews.length,
+      negativeReports
+    };
+
+    if (negativeReports > positiveReviews) {
+      updates.hasChangingStation = false;
+    } else if (positiveReviews > 0) {
+      updates.hasChangingStation = true;
+      if (!this.isGuaranteedChain(station.businessName)) {
+        updates.isVerified = true;
+      }
+    }
+
+    await db.update(changingStations)
+      .set(updates)
+      .where(eq(changingStations.id, stationId));
+  }
+
+  async findOrCreateStationFromPlace(placeData: any): Promise<ChangingStation> {
+    const allStations = await this.getChangingStations();
+    const existing = allStations.find(station => 
+      Math.abs(station.latitude - placeData.latitude) < 0.0001 &&
+      Math.abs(station.longitude - placeData.longitude) < 0.0001
+    );
+    
+    if (existing) {
+      return existing;
+    }
+    
+    const isGuaranteed = this.isGuaranteedChain(placeData.businessName);
+    
+    const stationData: InsertChangingStation = {
+      businessName: placeData.businessName,
+      address: placeData.address,
+      latitude: placeData.latitude,
+      longitude: placeData.longitude,
+      isAccessible: null,
+      isPrivate: false,
+      hasSupplies: null,
+      businessHours: placeData.businessHours || null,
+      isOpen: placeData.isOpen || null,
+      isVerified: false,
+      isGuaranteedChain: isGuaranteed
+    };
+    
+    return await this.createChangingStation(stationData);
+  }
+
+  async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?: string): Promise<any[]> {
+    const foursquareApiKey = process.env.FOURSQUARE_API_KEY;
+    if (!foursquareApiKey) {
+      console.warn('Foursquare API key not found - returning empty results');
+      return [];
+    }
+
+    try {
+      const radiusMeters = radiusKm * 1000;
+      
+      const categories = [
+        '13065', '17069', '17000', '13003', '17127',
+        '10027', '10001', '18021', '13035', '17031', '17043'
+      ].join(',');
+
+      const foursquareUrl = `https://places-api.foursquare.com/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&categories=${categories}&limit=50&v=20240101`;
+
+      const response = await fetch(foursquareUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${foursquareApiKey}`,
+          'X-Places-Api-Version': '2025-06-17'
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Foursquare API error:', response.status, errorText);
+        return [];
+      }
+
+      const data = await response.json();
+      
+      if (!data.results || data.results.length === 0) {
+        return [];
+      }
+
+      const transformedResults = data.results.map((place: any) => ({
+        fsq_id: place.fsq_place_id,
+        name: place.name,
+        location: place.location,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        categories: place.categories,
+        distance: place.distance,
+        geocodes: place.geocodes,
+        isGuaranteedChain: this.isGuaranteedChain(place.name),
+        changingStationScore: this.calculateChangingStationScore(place)
+      }));
+
+      return transformedResults.sort((a, b) => {
+        if (a.isGuaranteedChain && !b.isGuaranteedChain) return -1;
+        if (!a.isGuaranteedChain && b.isGuaranteedChain) return 1;
+        if (a.changingStationScore !== b.changingStationScore) {
+          return b.changingStationScore - a.changingStationScore;
+        }
+        return (a.distance || Infinity) - (b.distance || Infinity);
+      });
+
+    } catch (error) {
+      console.error('Error searching Foursquare:', error);
+      return [];
+    }
+  }
+
+  private calculateChangingStationScore(place: any): number {
+    let score = 0;
+    const name = place.name?.toLowerCase() || '';
+    const categories = place.categories || [];
+    
+    if (this.isGuaranteedChain(name)) return 4;
+    
+    const categoryNames = categories.map((cat: any) => cat.name?.toLowerCase() || '');
+    if (categoryNames.some((cat: string) => cat.includes('mall') || cat.includes('department store'))) {
+      score = 3;
+    } else if (categoryNames.some((cat: string) => cat.includes('restaurant') || cat.includes('supermarket') || cat.includes('grocery'))) {
+      score = 2;
+    } else if (categoryNames.some((cat: string) => cat.includes('gas') || cat.includes('fuel'))) {
+      score = 1.5;
+    } else {
+      score = 1;
+    }
+    
+    return score;
+  }
+}
+
+export const storage = new DbStorage();
