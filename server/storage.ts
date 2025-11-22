@@ -229,11 +229,12 @@ if (stationReviews.length >= 1) {
     // Only mark as verified if it's NOT a guaranteed chain
     // Guaranteed chains stay marked as guaranteed even after verification
     if (!this.isGuaranteedChain(station.businessName)) {
-      station.isVerified = true;
-       }
+        station.isVerified = true;
+      }
     }
   } 
-}  
+} 
+  
   // NEW: Find or create station from Foursquare place data
   async findOrCreateStationFromPlace(placeData: any): Promise<ChangingStation> {
   // Check if station already exists by searching for matching coordinates
