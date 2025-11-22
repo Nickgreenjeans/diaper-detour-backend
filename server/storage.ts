@@ -1,6 +1,6 @@
 import { db } from './db';
 import { eq, sql as drizzleSql, like, and } from 'drizzle-orm';
-import { changingStations, reviews, type ChangingStation, type InsertChangingStation, type Review, type InsertReview } from "@shared/schema";
+import { changingStations, reviews, type ChangingStation, type InsertChangingStation, type Review, type InsertReview } from "./schema";
 
 export interface IStorage {
   // Changing Stations
