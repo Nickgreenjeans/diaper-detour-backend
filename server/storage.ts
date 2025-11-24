@@ -302,10 +302,19 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
     ].join(',');
 
     // Build Foursquare API request - using the correct endpoint
-    const foursquareUrl = `https://places-api.foursquare.com/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&categories=${categories}&limit=50&v=20240101`;
-    console.log('Fetching from Foursquare:', foursquareUrl);
+const foursquareUrl = `https://places-api.foursquare.com/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&categories=${categories}&limit=50&v=20240101`;
 
-    const response = await fetch(foursquareUrl, {
+// LOG API CALL
+const callTimestamp = new Date().toISOString();
+console.log('🔵 FOURSQUARE API CALL:', {
+  timestamp: callTimestamp,
+  location: `${lat},${lng}`,
+  radius: `${radiusKm}km`,
+  url: foursquareUrl
+});
+
+const startTime = Date.now();
+const response = await fetch(foursquareUrl, {
   headers: {
     'Accept': 'application/json',
     'Authorization': `Bearer ${foursquareApiKey}`,
@@ -313,49 +322,55 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
   }
 });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Foursquare API error:', response.status, errorText);
-      return [];
-    }
+const duration = Date.now() - startTime;
 
-    const data = await response.json();
-    console.log('Raw Foursquare API response - first result:', JSON.stringify(data.results[0], null, 2));
-    
-    if (!data.results || data.results.length === 0) {
-      console.log('No Foursquare results found');
-      return [];
-    }
+if (!response.ok) {
+  const errorText = await response.text();
+  console.error('❌ FOURSQUARE API ERROR:', {
+    status: response.status,
+    duration: `${duration}ms`,
+    error: errorText
+  });
+  return [];
+}
 
-    console.log('Foursquare returned', data.results.length, 'places');
+const data = await response.json();
 
-    // Transform Foursquare results to match our format
-    const transformedResults = data.results.map((place: any) => ({
-      fsq_id: place.fsq_place_id,
-      name: place.name,
-      location: place.location,
-      latitude: place.latitude,
-      longitude: place.longitude,
-      categories: place.categories,
-      distance: place.distance,
-      geocodes: place.geocodes,
-      // Add flags for our app
-      isGuaranteedChain: this.isGuaranteedChain(place.name),
-      changingStationScore: this.calculateChangingStationScore(place)
-    }));
+// LOG API RESPONSE
+console.log('✅ FOURSQUARE API SUCCESS:', {
+  duration: `${duration}ms`,
+  resultsCount: data.results?.length || 0,
+  timestamp: callTimestamp
+});
 
-    // Sort by relevance
-    return transformedResults.sort((a, b) => {
-      // Guaranteed chains first
-      if (a.isGuaranteedChain && !b.isGuaranteedChain) return -1;
-      if (!a.isGuaranteedChain && b.isGuaranteedChain) return 1;
-      // Then by score
-      if (a.changingStationScore !== b.changingStationScore) {
-        return b.changingStationScore - a.changingStationScore;
-      }
-      // Finally by distance
-      return (a.distance || Infinity) - (b.distance || Infinity);
-    });
+if (!data.results || data.results.length === 0) {
+  console.log('No Foursquare results found');
+  return [];
+}
+
+// Transform Foursquare results to match our format
+const transformedResults = data.results.map((place: any) => ({
+  fsq_id: place.fsq_place_id,
+  name: place.name,
+  location: place.location,
+  latitude: place.latitude,
+  longitude: place.longitude,
+  categories: place.categories,
+  distance: place.distance,
+  geocodes: place.geocodes,
+  isGuaranteedChain: this.isGuaranteedChain(place.name),
+  changingStationScore: this.calculateChangingStationScore(place)
+}));
+
+// Sort by relevance
+return transformedResults.sort((a, b) => {
+  if (a.isGuaranteedChain && !b.isGuaranteedChain) return -1;
+  if (!a.isGuaranteedChain && b.isGuaranteedChain) return 1;
+  if (a.changingStationScore !== b.changingStationScore) {
+    return b.changingStationScore - a.changingStationScore;
+  }
+  return (a.distance || Infinity) - (b.distance || Infinity);
+});
 
   } catch (error) {
     console.error('Error searching Foursquare:', error);
