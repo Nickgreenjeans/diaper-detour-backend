@@ -335,6 +335,16 @@ if (!response.ok) {
 
 const data = await response.json();
 
+// DEBUG: Log all place names
+console.log('📍 ALL PLACES RETURNED:', data.results?.map((p: any) => p.name).join(', '));
+
+// DEBUG: Check for CVS/Walgreens specifically
+const pharmacies = data.results?.filter((p: any) => 
+  p.name.toLowerCase().includes('cvs') || 
+  p.name.toLowerCase().includes('walgreens')
+);
+console.log('💊 PHARMACIES FOUND:', pharmacies?.length || 0, pharmacies?.map((p: any) => p.name));
+    
 // LOG API RESPONSE
 console.log('✅ FOURSQUARE API SUCCESS:', {
   duration: `${duration}ms`,
