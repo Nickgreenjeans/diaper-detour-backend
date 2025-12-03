@@ -299,6 +299,8 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
       '13035', // Coffee Shop
       '17031', // Department Store
       '17043', // Supermarket
+      '17021', // Convenience Store
+      '17015'  // Pharmacy
     ].join(',');
 
     // Build Foursquare API request - using the correct endpoint
@@ -387,19 +389,19 @@ return transformedResults.sort((a, b) => {
     // Guaranteed chains get highest score
     if (this.isGuaranteedChain(name)) return 4;
     
-    // Shopping centers and malls very likely
-    const categoryNames = categories.map((cat: any) => cat.name?.toLowerCase() || '');
-    if (categoryNames.some((cat: string) => cat.includes('mall') || cat.includes('department store'))) {
-      score = 3;
-    }
-    // Restaurants and supermarkets likely
-    else if (categoryNames.some((cat: string) => cat.includes('restaurant') || cat.includes('supermarket') || cat.includes('grocery'))) {
-      score = 2;
-    }
-    // Gas stations possible
-    else if (categoryNames.some((cat: string) => cat.includes('gas') || cat.includes('fuel'))) {
-      score = 1.5;
-    }
+    // Gas stations very likely (convenient for quick stops)
+const categoryNames = categories.map((cat: any) => cat.name?.toLowerCase() || '');
+if (categoryNames.some((cat: string) => cat.includes('gas') || cat.includes('fuel') || cat.includes('convenience') || cat.includes('pharmacy'))) {
+  score = 3;
+}
+// Restaurants and supermarkets likely
+else if (categoryNames.some((cat: string) => cat.includes('restaurant') || cat.includes('supermarket') || cat.includes('grocery'))) {
+  score = 2;
+}
+// Shopping centers and malls possible
+else if (categoryNames.some((cat: string) => cat.includes('mall') || cat.includes('department store'))) {
+  score = 1.5;
+}
     // Other places possible
     else {
       score = 1;
