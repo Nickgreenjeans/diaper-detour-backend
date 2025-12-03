@@ -289,15 +289,28 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
     // Foursquare categories likely to have changing facilities
     const categories = [
   '4bf58dd8d48988d1c4941735', // Restaurant
+  '4bf58dd8d48988d1f9941735', // Food and Beverage
   '4bf58dd8d48988d16e941735', // Fast Food
   '4bf58dd8d48988d113951735', // Gas Station
+  '556c9aeba7c87f637869ce12', // Love's Travel Stop
+  '556f7a12bd6a75a9903bddb6', // Shell Gas Station
+  '590b3d809411f25cbb00e94f', // Marathon Gas Station
+  '556ca0b7a7c87f63786a354b', // Maverik Gas Station
+  '556f3d48bd6a007c7737e8e4', // Mapco Gas Station
+  '66e9905dd014de302a240305', // ExxonMobil
+  '556f676fbd6a75a99038d8e2', // Exxon
+  '5d978ca330ff59000c275a70', // Exxon Convenience Stores
   '4bf58dd8d48988d1e0931735', // Coffee Shop
   '4bf58dd8d48988d1fd941735', // Shopping Mall
-  '4bf58dd8d48988d118951735', // Supermarket
+  '52f2ab2ebcbc57f1066b8b46', // Supermarket
+  '4bf58dd8d48988d118951735', // Grocery Store
   '4bf58dd8d48988d1f6941735', // Department Store
   '4d954b0ea243a5684a65b473', // Convenience Store
   '4bf58dd8d48988d10f951735', // Pharmacy
-  '5745c2e4498e11e7bccabdbd'  // Drugstore
+  '5745c2e4498e11e7bccabdbd', // Drugstore
+  '556f5631bd6a75a99036ab99', // Walgreens
+  '58ff89c9d8fe7a2faa3998ed', // Walgreens Clinic
+  '556f5631bd6a75a99036ab9b', // CVS Pharmacy
 ].join(',');
 
     // Build Foursquare API request - using the correct endpoint
