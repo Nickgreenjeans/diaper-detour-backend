@@ -334,7 +334,6 @@ if (!response.ok) {
 }
 
 const data = await response.json();
-
 // Simple debug - just count and first few names
 if (data.results) {
   const pharmacies = data.results.filter((p: any) => 
@@ -343,19 +342,18 @@ if (data.results) {
     p.name?.toLowerCase().includes('pharmacy')
   );
   
-  console.log(`PHARMACY CHECK: Found ${pharmacies.length} pharmacies out of ${data.results.length} total places`);
+  console.log('PHARMACY CHECK: Found ' + pharmacies.length + ' pharmacies out of ' + data.results.length + ' total places');
   
   if (pharmacies.length > 0) {
     pharmacies.forEach((p: any) => {
-      console.log(`  - ${p.name}`);
+      console.log('  - ' + p.name);
     });
   }
 }
-```
 
 // LOG API RESPONSE
-console.log('✅ FOURSQUARE API SUCCESS:', {
-  duration: `${duration}ms`,
+console.log('FOURSQUARE API SUCCESS:', {
+  duration: duration + 'ms',
   resultsCount: data.results?.length || 0,
   timestamp: callTimestamp
 });
