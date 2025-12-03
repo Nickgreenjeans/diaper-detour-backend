@@ -292,6 +292,7 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
   '4bf58dd8d48988d1f9941735', // Food and Beverage
   '4bf58dd8d48988d16e941735', // Fast Food
   '4bf58dd8d48988d113951735', // Gas Station
+  '556f676fbd6a75a99038d8e9', // 7-Eleven Gas Station
   '556c9aeba7c87f637869ce12', // Love's Travel Stop
   '556f7a12bd6a75a9903bddb6', // Shell Gas Station
   '590b3d809411f25cbb00e94f', // Marathon Gas Station
