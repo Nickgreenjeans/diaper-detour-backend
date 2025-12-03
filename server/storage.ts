@@ -288,20 +288,17 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
     
     // Foursquare categories likely to have changing facilities
     const categories = [
-      '13065', // Restaurant
-      '17069', // Shopping Mall
-      '17000', // Retail
-      '13003', // Fast Food
-      '17127', // Gas Station
-      '10027', // Zoo
-      '10001', // Arts & Entertainment
-      '18021', // Gym / Fitness
-      '13035', // Coffee Shop
-      '17031', // Department Store
-      '17043', // Supermarket
-      '4d954b0ea243a5684a65b473', // Convenience Store
-      '17015'  // Pharmacy
-    ].join(',');
+  '4bf58dd8d48988d1c4941735', // Restaurant
+  '4bf58dd8d48988d16e941735', // Fast Food
+  '4bf58dd8d48988d113951735', // Gas Station
+  '4bf58dd8d48988d1e0931735', // Coffee Shop
+  '4bf58dd8d48988d1fd941735', // Shopping Mall
+  '4bf58dd8d48988d118951735', // Supermarket
+  '4bf58dd8d48988d1f6941735', // Department Store
+  '4d954b0ea243a5684a65b473', // Convenience Store
+  '4bf58dd8d48988d10f951735', // Pharmacy
+  '5745c2e4498e11e7bccabdbd'  // Drugstore
+].join(',');
 
     // Build Foursquare API request - using the correct endpoint
 const foursquareUrl = `https://places-api.foursquare.com/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&categories=${categories}&limit=50&v=20240101`;
