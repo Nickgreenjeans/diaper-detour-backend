@@ -299,7 +299,7 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
       '13035', // Coffee Shop
       '17031', // Department Store
       '17043', // Supermarket
-      '17021', // Convenience Store
+      '4d954b0ea243a5684a65b473', // Convenience Store
       '17015'  // Pharmacy
     ].join(',');
 
