@@ -595,8 +595,7 @@ export class DbStorage implements IStorage {
         '10027', '10001', '18021', '13035', '17031', '17043'
       ].join(',');
 
-      const foursquareUrl = `https://places-api.foursquare.com/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&categories=${categories}&limit=50&v=20240101`;
-
+      const foursquareUrl = `https://places-api.foursquare.com/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&limit=50&v=20240101`;
       const response = await fetch(foursquareUrl, {
         headers: {
           'Accept': 'application/json',
