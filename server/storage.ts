@@ -366,22 +366,6 @@ if (!response.ok) {
 }
 
 const data = await response.json();
-// Simple debug - just count and first few names
-if (data.results) {
-  const pharmacies = data.results.filter((p: any) => 
-    p.name?.toLowerCase().includes('cvs') || 
-    p.name?.toLowerCase().includes('walgreens') ||
-    p.name?.toLowerCase().includes('pharmacy')
-  );
-  
-  console.log('PHARMACY CHECK: Found ' + pharmacies.length + ' pharmacies out of ' + data.results.length + ' total places');
-  
-  if (pharmacies.length > 0) {
-    pharmacies.forEach((p: any) => {
-      console.log('  - ' + p.name);
-    });
-  }
-}
 
 // LOG API RESPONSE
 console.log('FOURSQUARE API SUCCESS:', {
