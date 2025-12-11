@@ -303,6 +303,21 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
   '4d954b0ea243a5684a65b473', // Convenience Store
   '4bf58dd8d48988d10f951735', // Pharmacy
   '5745c2e4498e11e7bccabdbd', // Drugstore
+].join(',');
+
+    // Foursquare Chain ID's likely to have changing stations
+    const chains = [
+  '556e1846a7c82e6b72513d6b', // Chick-Fil-A
+  '5665d0e560b2cc5383d258e8', // Buc-ee's
+  '556e119fa7c82e6b725012dd', // Target
+  '556f676fbd6a75a99038d8ec', // Starbucks
+  '556d1914aceaff43eb0a123a', // Circle K
+  '556dfa53a7c82e6b724de09d', // Murphy USA
+  '60241dda9873ff0e979a2d81', // Pilot Flying J
+  '556a3897a7c8957d73d55984', // Racetrac
+  '556f5631bd6a75a99036ab9a', // BP
+  '556ce2a7aceaff43eb04b494', // CITGO
+  '556f46f6bd6a007c77390fae', // Chevron
   '556f676fbd6a75a99038d8e9', // 7-Eleven Gas Station
   '556c9aeba7c87f637869ce12', // Love's Travel Stop
   '556f7a12bd6a75a9903bddb6', // Shell Gas Station
@@ -318,7 +333,7 @@ async searchPlacesNearby(lat: number, lng: number, radiusKm: number = 16, query?
 ].join(',');
 
     // Build Foursquare API request - using the correct endpoint
-const foursquareUrl = `https://places-api.foursquare.com/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&categories=${categories}&limit=50&v=20240101`;
+const foursquareUrl = `https://places-api.foursquare.com/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&fsq_category_ids=${categories}&fsq_chain_ids=${chains}&limit=50&v=20240101`;
 
 // LOG API CALL
 const callTimestamp = new Date().toISOString();
@@ -380,7 +395,7 @@ if (!data.results || data.results.length === 0) {
   return [];
 }
 
-// Transform Foursquare results to match our format
+/// Transform Foursquare results to match format
 const transformedResults = data.results.map((place: any) => ({
   fsq_id: place.fsq_place_id,
   name: place.name,
@@ -388,6 +403,7 @@ const transformedResults = data.results.map((place: any) => ({
   latitude: place.latitude,
   longitude: place.longitude,
   categories: place.categories,
+  chains: place.chains,
   distance: place.distance,
   geocodes: place.geocodes,
   isGuaranteedChain: this.isGuaranteedChain(place.name),
@@ -412,33 +428,84 @@ return transformedResults.sort((a, b) => {
 
   // Calculate likelihood score for changing station availability
   private calculateChangingStationScore(place: any): number {
-    let score = 0;
-    const name = place.name?.toLowerCase() || '';
-    const categories = place.categories || [];
-    
-    // Guaranteed chains get highest score
-    if (this.isGuaranteedChain(name)) return 4;
-    
-    // Gas stations very likely (convenient for quick stops)
-const categoryNames = categories.map((cat: any) => cat.name?.toLowerCase() || '');
-if (categoryNames.some((cat: string) => cat.includes('gas') || cat.includes('fuel') || cat.includes('convenience') || cat.includes('pharmacy'))) {
-  score = 3;
-}
-// Restaurants and supermarkets likely
-else if (categoryNames.some((cat: string) => cat.includes('restaurant') || cat.includes('supermarket') || cat.includes('grocery'))) {
-  score = 2;
-}
-// Shopping centers and malls possible
-else if (categoryNames.some((cat: string) => cat.includes('mall') || cat.includes('department store'))) {
-  score = 1.5;
-}
-    // Other places possible
-    else {
-      score = 1;
-    }
-    
-    return score;
+  let score = 0;
+  const name = place.name?.toLowerCase() || '';
+  const categories = place.categories || [];
+  const chains = place.chains || []; // Add chains detection
+  
+  // Guaranteed chains get highest score (by NAME)
+  if (this.isGuaranteedChain(name)) return 4;
+  
+  // TIER 1 - Priority Chains
+  const priorityChainIds = [
+    '556f7a12bd6a75a9903bddb6', // Shell
+    '556c9aeba7c87f637869ce12', // Love's Travel Stop
+    '556f5631bd6a75a99036ab99', // Walgreens
+    '556f5631bd6a75a99036ab9b', // CVS Pharmacy
+    '556e1846a7c82e6b72513d6b', // Chick-fil-A
+    '5665d0e560b2cc5383d258e8', // Buc-ee's
+    '556f676fbd6a75a99038d8ec', // Starbucks
+    '556ca0b7a7c87f63786a354b', // Maverik
+    '556e119fa7c82e6b725012dd', // Target
+  ];
+  
+  if (chains.some((chain: any) => tier1ChainIds.includes(chain.fsq_chain_id))) {
+    return 3.8;
   }
+
+  // TIER 2 - Other known chains 
+  const tier2ChainIds = [
+  '556d1914aceaff43eb0a123a', // Circle K
+  '556dfa53a7c82e6b724de09d', // Murphy USA
+  '60241dda9873ff0e979a2d81', // Pilot Flying J
+  '556a3897a7c8957d73d55984', // Racetrac
+  '556f5631bd6a75a99036ab9a', // BP
+  '556ce2a7aceaff43eb04b494', // CITGO
+  '556f46f6bd6a007c77390fae', // Chevron
+  '556f676fbd6a75a99038d8e9', // 7-Eleven Gas Station
+  '590b3d809411f25cbb00e94f', // Marathon Gas Station
+  '556f3d48bd6a007c7737e8e4', // Mapco Gas Station
+  '66e9905dd014de302a240305', // ExxonMobil
+  '556f676fbd6a75a99038d8e2', // Exxon
+  '5d978ca330ff59000c275a70', // Exxon Convenience Stores
+  '58ff89c9d8fe7a2faa3998ed', // Walgreens Clinic
+ ];
+
+ if (chains.some((chain: any) => tier2ChainIds.includes(chain.fsq_chain_id))) {
+   return 3.2;
+ }
+  // Gas stations and convenience stores very likely (by CATEGORY)
+  const categoryNames = categories.map((cat: any) => cat.name?.toLowerCase() || '');
+  if (categoryNames.some((cat: string) => 
+    cat.includes('gas') || 
+    cat.includes('fuel') || 
+    cat.includes('convenience') || 
+    cat.includes('pharmacy')
+  )) {
+    score = 3;
+  }
+  // Restaurants and supermarkets likely
+  else if (categoryNames.some((cat: string) => 
+    cat.includes('restaurant') || 
+    cat.includes('supermarket') || 
+    cat.includes('grocery')
+  )) {
+    score = 2;
+  }
+  // Shopping centers and malls possible
+  else if (categoryNames.some((cat: string) => 
+    cat.includes('mall') || 
+    cat.includes('department store')
+  )) {
+    score = 1.5;
+  }
+  // Everything else
+  else {
+    score = 1;
+  }
+  
+  return score;
+}
 }
 
    // DbStorage Class
@@ -593,12 +660,51 @@ export class DbStorage implements IStorage {
     try {
       const radiusMeters = radiusKm * 1000;
       
-      const categories = [
-        '13065', '17069', '17000', '13003', '17127',
-        '10027', '10001', '18021', '13035', '17031', '17043'
-      ].join(',');
+   const categories = [
+    '4bf58dd8d48988d1c4941735', // Restaurant
+    '4bf58dd8d48988d157941735', // New American Restaurant
+    '52e81612bcbc57f1066b7a00', // Comfort Food Restaurant
+    '4bf58dd8d48988d1f9941735', // Food and Beverage
+    '4bf58dd8d48988d16e941735', // Fast Food
+    '4bf58dd8d48988d1e0931735', // Coffee Shop
+    '4bf58dd8d48988d113951735', // Fuel Station
+    '4bf58dd8d48988d113951735', // Gas Station
+    '4bf58dd8d48988d1fd941735', // Shopping Mall
+    '52f2ab2ebcbc57f1066b8b46', // Supermarket
+    '4bf58dd8d48988d118951735', // Grocery Store
+    '4bf58dd8d48988d1f6941735', // Department Store
+    '4d954b0ea243a5684a65b473', // Convenience Store
+    '4bf58dd8d48988d10f951735', // Pharmacy
+    '5745c2e4498e11e7bccabdbd', // Drugstore
+   ].join(',');
 
-      const foursquareUrl = `https://places-api.foursquare.com/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&fsq_category_ids=${categories}&limit=50&v=20240101`;
+   const chains = [
+    '556e1846a7c82e6b72513d6b', // Chick-Fil-A
+    '5665d0e560b2cc5383d258e8', // Buc-ee's
+    '556e119fa7c82e6b725012dd', // Target
+    '556f676fbd6a75a99038d8ec', // Starbucks
+    '556d1914aceaff43eb0a123a', // Circle K
+    '556dfa53a7c82e6b724de09d', // Murphy USA
+    '60241dda9873ff0e979a2d81', // Pilot Flying J
+    '556a3897a7c8957d73d55984', // Racetrac
+    '556f5631bd6a75a99036ab9a', // BP
+    '556ce2a7aceaff43eb04b494', // CITGO
+    '556f46f6bd6a007c77390fae', // Chevron
+    '556f676fbd6a75a99038d8e9', // 7-Eleven Gas Station
+    '556c9aeba7c87f637869ce12', // Love's Travel Stop
+    '556f7a12bd6a75a9903bddb6', // Shell Gas Station
+    '590b3d809411f25cbb00e94f', // Marathon Gas Station
+    '556ca0b7a7c87f63786a354b', // Maverik Gas Station
+    '556f3d48bd6a007c7737e8e4', // Mapco Gas Station
+    '66e9905dd014de302a240305', // ExxonMobil
+    '556f676fbd6a75a99038d8e2', // Exxon
+    '5d978ca330ff59000c275a70', // Exxon Convenience Stores
+    '556f5631bd6a75a99036ab99', // Walgreens
+    '58ff89c9d8fe7a2faa3998ed', // Walgreens Clinic
+    '556f5631bd6a75a99036ab9b', // CVS Pharmacy
+   ].join(',');
+      
+      const foursquareUrl = `https://places-api.foursquare.com/places/search?ll=${lat}%2C${lng}&radius=${radiusMeters}&fsq_category_ids=${categories}&fsq_chain_ids=${chains}&limit=50&v=20240101`;
       const response = await fetch(foursquareUrl, {
         headers: {
           'Accept': 'application/json',
