@@ -124,6 +124,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Report a review
+app.post("/api/reviews/:id/report", async (req, res) => {
+  try {
+    const reviewId = parseInt(req.params.id);
+    const { reason } = req.body;
+    
+    if (isNaN(reviewId)) {
+      return res.status(400).json({ message: "Invalid review ID" });
+    }
+    
+    // Get the review details
+    const review = await storage.getReviewsForStation(reviewId);
+    
+    // Log the report (you can see this in Render logs)
+    console.log('REVIEW REPORTED:', {
+      reviewId,
+      reason: reason || 'No reason provided',
+      timestamp: new Date().toISOString()
+    });
+    
+    // TODO: Send email to diaper detour email
+    // For now, just return success
+    
+    res.status(200).json({ message: "Review reported successfully" });
+  } catch (error) {
+    console.error('Error reporting review:', error);
+    res.status(500).json({ message: "Failed to report review" });
+  }
+});
+  
   // Foursquare Places search for changing stations
   app.get("/api/foursquare/nearby", async (req, res) => {
     try {
