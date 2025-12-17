@@ -39,6 +39,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create a new changing station (manual add by user)
+app.post("/api/changing-stations", async (req, res) => {
+  try {
+    const stationData = req.body;
+    
+    // Validate required fields
+    if (!stationData.businessName || !stationData.address || !stationData.latitude || !stationData.longitude) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+    
+    const newStation = await storage.createChangingStation(stationData);
+    res.status(201).json(newStation);
+  } catch (error) {
+    console.error('Error creating changing station:', error);
+    res.status(500).json({ message: "Failed to create changing station" });
+  }
+});
+  
   // Get nearby changing stations (must be before :id route)  
   app.get("/api/changing-stations/nearby", async (req, res) => {
     try {
