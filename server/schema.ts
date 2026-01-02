@@ -1,8 +1,19 @@
 import { pgTable, text, serial, integer, boolean, real, timestamp, varchar, jsonb } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 
+export const usersTable = pgTable("users", {
+  id: serial("id").primaryKey(),
+  appleUserId: text("apple_user_id").notNull().unique(),
+  email: text("email"),
+  firstName: text("first_name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expoPushToken: text("expo_push_token"),
+});
+
+export const insertUserSchema = createInsertSchema(usersTable);
+export const selectUserSchema = createSelectSchema(usersTable);
 export const changingStations = pgTable("changing_stations", {
   id: serial("id").primaryKey(),
   businessName: text("business_name").notNull(),
