@@ -14,16 +14,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.type('text/plain').send(token);
   });
 
-  // User authentication routes
+// User authentication routes
 app.post("/api/auth/apple", async (req, res) => {
   try {
-    const { appleUserId, email, firstName } = req.body;
+    const { identityToken, appleUserId, email, firstName } = req.body;
     
-    if (!appleUserId) {
-      return res.status(400).json({ message: "Apple User ID is required" });
+    if (!identityToken || !appleUserId) {
+      return res.status(400).json({ message: "Identity token and Apple User ID are required" });
     }
     
-    // Check if user already exists
+    // Validate the identity token with Apple
+    try {
+      const appleSignIn = require('apple-signin-auth');
+      
+      const appleResponse = await appleSignIn.verifyIdToken(identityToken, {
+        audience: 'com.diaperdetour.mobile', // Your bundle ID
+        ignoreExpiration: false, // Don't accept expired tokens
+      });
+      
+      // Token is valid! Apple confirmed it.
+      console.log('Apple token validated successfully for user:', appleUserId);
+      
+      // The sub (subject) in the token should match the appleUserId
+      if (appleResponse.sub !== appleUserId) {
+        return res.status(401).json({ message: "Token user ID mismatch" });
+      }
+      
+    } catch (tokenError) {
+      console.error('Apple token validation failed:', tokenError);
+      return res.status(401).json({ message: "Invalid Apple Sign In token" });
+    }
+    
+    // Token is valid, now check if user exists
     const existingUser = await storage.getUserByAppleId(appleUserId);
     
     if (existingUser) {
