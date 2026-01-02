@@ -14,6 +14,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.type('text/plain').send(token);
   });
 
+  // User authentication routes
+app.post("/api/auth/apple", async (req, res) => {
+  try {
+    const { appleUserId, email, firstName } = req.body;
+    
+    if (!appleUserId) {
+      return res.status(400).json({ message: "Apple User ID is required" });
+    }
+    
+    // Check if user already exists
+    const existingUser = await storage.getUserByAppleId(appleUserId);
+    
+    if (existingUser) {
+      // User exists, return their info
+      return res.json(existingUser);
+    }
+    
+    // Create new user
+    const newUser = await storage.createUser({
+      appleUserId,
+      email: email || null,
+      firstName: firstName || null,
+    });
+    
+    res.status(201).json(newUser);
+  } catch (error) {
+    console.error('Error with Apple authentication:', error);
+    res.status(500).json({ message: "Failed to authenticate" });
+  }
+});
+
+// Update user's push token
+app.put("/api/users/:appleUserId/push-token", async (req, res) => {
+  try {
+    const { appleUserId } = req.params;
+    const { expoPushToken } = req.body;
+    
+    const updatedUser = await storage.updateUserPushToken(appleUserId, expoPushToken);
+    
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating push token:', error);
+    res.status(500).json({ message: "Failed to update push token" });
+  }
+});
+  
   // Get all changing stations
   app.get("/api/changing-stations", async (req, res) => {
     try {
