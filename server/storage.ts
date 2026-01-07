@@ -21,9 +21,9 @@ export interface IStorage {
 }
 
  // User methods
-  getUserByAppleId(appleUserId: string): Promise<any>;
-  createUser(userData: any): Promise<any>;
-  updateUserPushToken(appleUserId: string, expoPushToken: string): Promise<any>;
+  getUserByAppleId: (appleUserId: string) => Promise<any>;
+  createUser: (userData: any) => Promise<any>;
+  updateUserPushToken: (appleUserId: string, expoPushToken: string) => Promise<any>;
 }
 export class MemStorage implements IStorage {
   private changingStations: Map<number, ChangingStation>;
