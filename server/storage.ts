@@ -18,12 +18,11 @@ export interface IStorage {
   // Foursquare Integration
   searchPlacesNearby(lat: number, lng: number, radiusKm?: number, query?: string): Promise<any[]>;
   findOrCreateStationFromPlace(placeData: any): Promise<ChangingStation>;
-}
-
- // User methods
-  getUserByAppleId: (appleUserId: string) => Promise<any>;
-  createUser: (userData: any) => Promise<any>;
-  updateUserPushToken: (appleUserId: string, expoPushToken: string) => Promise<any>;
+  
+  // User methods
+  getUserByAppleId(appleUserId: string): Promise<any>;
+  createUser(userData: any): Promise<any>;
+  updateUserPushToken(appleUserId: string, expoPushToken: string): Promise<any>;
 }
 export class MemStorage implements IStorage {
   private changingStations: Map<number, ChangingStation>;
@@ -763,32 +762,32 @@ export class DbStorage implements IStorage {
     return score;
   }
   
-  // User methods
+// User methods
 async getUserByAppleId(appleUserId: string) {
-  const [user] = await this.db
+  const [user] = await db
     .select()
     .from(usersTable)
     .where(eq(usersTable.appleUserId, appleUserId))
     .limit(1);
   return user || null;
- }
+}
 
 async createUser(userData: any) {
-  const [newUser] = await this.db
+  const [newUser] = await db
     .insert(usersTable)
     .values(userData)
     .returning();
   return newUser;
- }
+}
 
 async updateUserPushToken(appleUserId: string, expoPushToken: string) {
-  const [updatedUser] = await this.db
+  const [updatedUser] = await db
     .update(usersTable)
     .set({ expoPushToken })
     .where(eq(usersTable.appleUserId, appleUserId))
     .returning();
   return updatedUser || null;
- }
+}
 }
 
 export const storage = new DbStorage();
