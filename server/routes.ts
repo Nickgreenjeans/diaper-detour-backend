@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertReviewSchema, insertChangingStationSchema } from "./schema";
 import { z } from "zod";
 import polyline from "polyline";
+import appleSignIn from 'apple-signin-auth';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Apple MapKit token endpoint
@@ -24,26 +25,23 @@ app.post("/api/auth/apple", async (req, res) => {
     }
     
     // Validate the identity token with Apple
-    try {
-      const appleSignIn = require('apple-signin-auth');
-      
-      const appleResponse = await appleSignIn.verifyIdToken(identityToken, {
-        audience: 'com.diaperdetour.mobile', // Your bundle ID
-        ignoreExpiration: false, // Don't accept expired tokens
-      });
-      
-      // Token is valid! Apple confirmed it.
-      console.log('Apple token validated successfully for user:', appleUserId);
-      
-      // The sub (subject) in the token should match the appleUserId
-      if (appleResponse.sub !== appleUserId) {
-        return res.status(401).json({ message: "Token user ID mismatch" });
-      }
-      
-    } catch (tokenError) {
-      console.error('Apple token validation failed:', tokenError);
-      return res.status(401).json({ message: "Invalid Apple Sign In token" });
-    }
+    // Validate the identity token with Apple
+try {
+  const appleResponse = await appleSignIn.verifyIdToken(identityToken, {
+    audience: 'com.diaperdetour.mobile',
+    ignoreExpiration: false,
+  });
+  
+  console.log('Apple token validated successfully for user:', appleUserId);
+  
+  if (appleResponse.sub !== appleUserId) {
+    return res.status(401).json({ message: "Token user ID mismatch" });
+  }
+  
+} catch (tokenError) {
+  console.error('Apple token validation failed:', tokenError);
+  return res.status(401).json({ message: "Invalid Apple Sign In token" });
+}
     
     // Token is valid, now check if user exists
     const existingUser = await storage.getUserByAppleId(appleUserId);
