@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import { insertReviewSchema, insertChangingStationSchema } from "./schema";
 import { z } from "zod";
 import polyline from "polyline";
-import appleSignIn from 'apple-signin-auth';
+import jwt from 'jsonwebtoken';
+import jwksClient from 'jwks-rsa';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Apple MapKit token endpoint
@@ -24,30 +25,48 @@ app.post("/api/auth/apple", async (req, res) => {
       return res.status(400).json({ message: "Identity token and Apple User ID are required" });
     }
     
-    // Validate the identity token with Apple
-    // Validate the identity token with Apple
-try {
-  const appleResponse = await appleSignIn.verifyIdToken(identityToken, {
-    audience: 'com.diaperdetour.mobile',
-    ignoreExpiration: false,
-  });
-  
-  console.log('Apple token validated successfully for user:', appleUserId);
-  
-  if (appleResponse.sub !== appleUserId) {
-    return res.status(401).json({ message: "Token user ID mismatch" });
-  }
-  
-} catch (tokenError) {
-  console.error('Apple token validation failed:', tokenError);
-  return res.status(401).json({ message: "Invalid Apple Sign In token" });
-}
+    // Validate the identity token with Apple's public keys
+    try {
+      // Create JWKS client to fetch Apple's public keys
+      const client = jwksClient({
+        jwksUri: 'https://appleid.apple.com/auth/keys',
+        cache: true,
+        rateLimit: true,
+      });
+      
+      // Decode token to get the key ID
+      const decodedToken = jwt.decode(identityToken, { complete: true });
+      
+      if (!decodedToken || !decodedToken.header.kid) {
+        return res.status(401).json({ message: "Invalid token format" });
+      }
+      
+      // Get the signing key from Apple
+      const key = await client.getSigningKey(decodedToken.header.kid);
+      const publicKey = key.getPublicKey();
+      
+      // Verify the token
+      const verifiedToken = jwt.verify(identityToken, publicKey, {
+        audience: 'com.diaperdetour.mobile',
+        issuer: 'https://appleid.apple.com',
+      });
+      
+      console.log('Apple token validated successfully for user:', appleUserId);
+      
+      // Verify the subject matches
+      if (verifiedToken.sub !== appleUserId) {
+        return res.status(401).json({ message: "Token user ID mismatch" });
+      }
+      
+    } catch (tokenError) {
+      console.error('Apple token validation failed:', tokenError);
+      return res.status(401).json({ message: "Invalid Apple Sign In token" });
+    }
     
     // Token is valid, now check if user exists
     const existingUser = await storage.getUserByAppleId(appleUserId);
     
     if (existingUser) {
-      // User exists, return their info
       return res.json(existingUser);
     }
     
