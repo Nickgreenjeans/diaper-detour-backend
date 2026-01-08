@@ -18,6 +18,8 @@
     "connect-pg-simple": "^10.0.0",
     "polyline": "^0.2.0",
     "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.1.0",
     "ws": "^8.18.0",
     "zod": "^3.24.2"
   },
