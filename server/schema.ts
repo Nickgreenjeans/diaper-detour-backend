@@ -12,8 +12,8 @@ export const users = pgTable("users", {
   expoPushToken: text("expo_push_token"),
 });
 
-export const insertUserSchema = createInsertSchema(usersTable);
-export const selectUserSchema = createSelectSchema(usersTable);
+export const insertUserSchema = createInsertSchema(users);
+export const selectUserSchema = createSelectSchema(users);
 export const changingStations = pgTable("changing_stations", {
   id: serial("id").primaryKey(),
   businessName: text("business_name").notNull(),
