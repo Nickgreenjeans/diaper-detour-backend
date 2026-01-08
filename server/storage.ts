@@ -766,15 +766,15 @@ export class DbStorage implements IStorage {
 async getUserByAppleId(appleUserId: string) {
   const [user] = await db
     .select()
-    .from(usersTable)
-    .where(eq(usersTable.appleUserId, appleUserId))
+    .from(users)
+    .where(eq(users.appleUserId, appleUserId))
     .limit(1);
   return user || null;
 }
 
 async createUser(userData: any) {
   const [newUser] = await db
-    .insert(usersTable)
+    .insert(users)
     .values(userData)
     .returning();
   return newUser;
@@ -782,9 +782,9 @@ async createUser(userData: any) {
 
 async updateUserPushToken(appleUserId: string, expoPushToken: string) {
   const [updatedUser] = await db
-    .update(usersTable)
+    .update(users)
     .set({ expoPushToken })
-    .where(eq(usersTable.appleUserId, appleUserId))
+    .where(eq(users.appleUserId, appleUserId))
     .returning();
   return updatedUser || null;
 }
