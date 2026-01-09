@@ -1,6 +1,6 @@
 import { db } from './db';
 import { eq, sql as drizzleSql, like, and } from 'drizzle-orm';
-import { changingStations, reviews, users, type ChangingStation, type InsertChangingStation, type Review, type InsertReview } from "./schema";
+import { changingStations, reviews, users, userNavigations, type ChangingStation, type InsertChangingStation, type Review, type InsertReview } from "./schema";
 
 export interface IStorage {
   // Changing Stations
@@ -23,6 +23,12 @@ export interface IStorage {
   getUserByAppleId(appleUserId: string): Promise<any>;
   createUser(userData: any): Promise<any>;
   updateUserPushToken(appleUserId: string, expoPushToken: string): Promise<any>;
+
+  // Navigation tracking methods
+  createNavigation(navigationData: any): Promise<any>;
+  cancelPendingNavigations(userId: number): Promise<void>;
+  getPendingNavigations(): Promise<any[]>;
+  markNavigationSent(navigationId: number): Promise<void>;
 }
 export class MemStorage implements IStorage {
   private changingStations: Map<number, ChangingStation>;
@@ -787,6 +793,53 @@ async updateUserPushToken(appleUserId: string, expoPushToken: string) {
     .where(eq(users.appleUserId, appleUserId))
     .returning();
   return updatedUser || null;
+}
+
+// Navigation tracking methods for Push Note
+async createNavigation(navigationData: any) {
+  const [navigation] = await db
+    .insert(userNavigations)
+    .values(navigationData)
+    .returning();
+  return navigation;
+}
+
+async cancelPendingNavigations(userId: number) {
+  await db
+    .update(userNavigations)
+    .set({ cancelled: true })
+    .where(
+      and(
+        eq(userNavigations.userId, userId),
+        eq(userNavigations.notificationSent, false),
+        eq(userNavigations.cancelled, false)
+      )
+    );
+}
+
+async getPendingNavigations() {
+  const now = new Date();
+  return await db
+    .select()
+    .from(userNavigations)
+    .innerJoin(users, eq(userNavigations.userId, users.id))
+    .where(
+      and(
+        eq(userNavigations.notificationSent, false),
+        eq(userNavigations.cancelled, false),
+        drizzleSql`${userNavigations.notificationScheduled} <= ${now}`
+      )
+    );
+}
+
+async markNavigationSent(navigationId: number) {
+  await db
+    .update(userNavigations)
+    .set({ 
+      notificationSent: true,
+      notificationScheduled: new Date()
+    })
+    .where(eq(userNavigations.id, navigationId));
 }
 }
 
