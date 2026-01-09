@@ -12,6 +12,18 @@ export const users = pgTable("users", {
   expoPushToken: text("expo_push_token"),
 });
 
+export const userNavigations = pgTable("user_navigations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  stationId: integer("station_id").notNull().references(() => changingStations.id),
+  stationName: text("station_name").notNull(),
+  navigatedAt: timestamp("navigated_at").defaultNow().notNull(),
+  notificationScheduled: timestamp("notification_scheduled"),
+  notificationSent: boolean("notification_sent").default(false).notNull(),
+  cancelled: boolean("cancelled").default(false).notNull(),
+  reviewCompleted: boolean("review_completed").default(false).notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export const changingStations = pgTable("changing_stations", {
