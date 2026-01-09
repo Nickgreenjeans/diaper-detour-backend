@@ -102,6 +102,42 @@ app.put("/api/users/:appleUserId/push-token", async (req, res) => {
     res.status(500).json({ message: "Failed to update push token" });
   }
 });
+
+  // Log user navigation (when they tap directions)
+app.post("/api/user-navigations", async (req, res) => {
+  try {
+    const { userId, stationId, stationName } = req.body;
+    
+    if (!userId || !stationId || !stationName) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+    
+    // Cancel any pending notifications for this user
+    await storage.cancelPendingNavigations(userId);
+    
+    // Create new navigation record with notification scheduled for 20 min later
+    const scheduledTime = new Date();
+    scheduledTime.setMinutes(scheduledTime.getMinutes() + 20);
+    
+    const navigation = await storage.createNavigation({
+      userId,
+      stationId,
+      stationName,
+      navigatedAt: new Date(),
+      notificationScheduled: scheduledTime,
+      notificationSent: false,
+      cancelled: false,
+      reviewCompleted: false,
+    });
+    
+    console.log('Navigation logged:', navigation.id, 'for user:', userId, 'station:', stationName);
+    
+    res.status(201).json(navigation);
+  } catch (error) {
+    console.error('Error logging navigation:', error);
+    res.status(500).json({ message: "Failed to log navigation" });
+  }
+});
   
   // Get all changing stations
   app.get("/api/changing-stations", async (req, res) => {
