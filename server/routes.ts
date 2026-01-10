@@ -115,9 +115,9 @@ app.post("/api/user-navigations", async (req, res) => {
     // Cancel any pending notifications for this user
     await storage.cancelPendingNavigations(userId);
     
-    // Create new navigation record with notification scheduled for 20 min later
+    // Create new navigation record with notification scheduled for 30 seconds later
     const scheduledTime = new Date();
-    scheduledTime.setMinutes(scheduledTime.getMinutes() + 20);
+    scheduledTime.setSeconds(scheduledTime.getSeconds() + 30);
     
     const navigation = await storage.createNavigation({
       userId,
