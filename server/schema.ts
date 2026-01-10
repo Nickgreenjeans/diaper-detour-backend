@@ -15,7 +15,7 @@ export const users = pgTable("users", {
 export const userNavigations = pgTable("user_navigations", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
-  stationId: integer("station_id").notNull().references(() => changingStations.id),
+  stationId: text("station_id").notNull(),
   stationName: text("station_name").notNull(),
   navigatedAt: timestamp("navigated_at").defaultNow().notNull(),
   notificationScheduled: timestamp("notification_scheduled"),
