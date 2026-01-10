@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-
+import { startNotificationScheduler } from "./notifications";
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -49,5 +49,9 @@ app.use((req, res, next) => {
   server.listen(PORT, () => {
     log(`🚀 Server running on port ${PORT}`);
     log(`📍 API available at: http://localhost:${PORT}/api`);
+
+    // Start notification scheduler
+  startNotificationScheduler();  // ← ADD THIS
+  log(`🔔 Notification scheduler started`);
   });
 })();
