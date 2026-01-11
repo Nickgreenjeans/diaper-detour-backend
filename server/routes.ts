@@ -86,11 +86,31 @@ app.post("/api/auth/apple", async (req, res) => {
 
 // Update user's push token
 app.put("/api/users/:appleUserId/push-token", async (req, res) => {
+  console.log('🔔 PUSH TOKEN REQUEST RECEIVED');
+  console.log('🔔 Apple User ID:', req.params.appleUserId);
+  console.log('🔔 Request Body:', req.body);
+  
   try {
     const { appleUserId } = req.params;
     const { expoPushToken } = req.body;
     
+    console.log('🔔 Calling updateUserPushToken...');
     const updatedUser = await storage.updateUserPushToken(appleUserId, expoPushToken);
+    
+    console.log('🔔 Updated user:', updatedUser);
+    
+    if (!updatedUser) {
+      console.log('❌ User not found for appleUserId:', appleUserId);
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    console.log('✅ Push token successfully saved!');
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('❌ Error updating push token:', error);
+    res.status(500).json({ message: "Failed to update push token" });
+  }
+});
     
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
