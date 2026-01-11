@@ -117,7 +117,7 @@ app.post("/api/user-navigations", async (req, res) => {
     
     // Create new navigation record with notification scheduled for 30 seconds later
     const scheduledTime = new Date();
-    scheduledTime.setSeconds(scheduledTime.getSeconds() + 30);
+    scheduledTime.setSeconds(scheduledTime.getSeconds() + 30); //TO DO: Change back to 20 minutes before production launch
     
     const navigation = await storage.createNavigation({
       userId,
