@@ -111,17 +111,6 @@ app.put("/api/users/:appleUserId/push-token", async (req, res) => {
     res.status(500).json({ message: "Failed to update push token" });
   }
 });
-    
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    
-    res.json(updatedUser);
-  } catch (error) {
-    console.error('Error updating push token:', error);
-    res.status(500).json({ message: "Failed to update push token" });
-  }
-});
 
   // Log user navigation (when they tap directions)
 app.post("/api/user-navigations", async (req, res) => {
