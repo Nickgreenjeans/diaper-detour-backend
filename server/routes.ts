@@ -112,6 +112,12 @@ app.put("/api/users/:appleUserId/push-token", async (req, res) => {
   }
 });
 
+  // DEBUG: Frontend logging endpoint
+app.post("/api/debug/log", async (req, res) => {
+  console.log('📱 FRONTEND:', req.body.message, req.body.data || '');
+  res.json({ ok: true });
+});
+  
   // Log user navigation (when they tap directions)
 app.post("/api/user-navigations", async (req, res) => {
   try {
