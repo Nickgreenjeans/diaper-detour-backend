@@ -30,12 +30,12 @@ export async function sendPushNotification(
     data: {
       stationId,
       stationName,
-      address,
-      latitude,
-      longitude,
+      address: address || '',
+      latitude: latitude || 0,
+      longitude: longitude || 0,
     },
   };
-
+  
   try {
     const response = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
@@ -64,33 +64,47 @@ export async function checkAndSendPendingNotifications() {
     console.log(`📬 Found ${pendingNavigations.length} pending notifications`);
     
     for (const nav of pendingNavigations) {
-      // Access joined user data
-      const user = nav.users;
-      const navigation = nav.user_navigations;
-      
-      if (!user.expoPushToken) {
-        console.log(`⚠️ No push token for user ${user.id}, skipping...`);
-        await storage.markNavigationSent(navigation.id);
-        continue;
-      }
-      
-      console.log(`📤 Sending notification for ${navigation.stationName} to user ${user.id}`);
-      
-      try {
-        await sendPushNotification(
-          user.expoPushToken,
-          navigation.stationId,
-          navigation.stationName
-        );
-        
-        await storage.markNavigationSent(navigation.id);
-        console.log(`✅ Notification sent and marked for navigation ${navigation.id}`);
-      } catch (error) {
-        console.error(`❌ Failed to send notification for navigation ${navigation.id}:`, error);
+  // Access joined user data
+  const user = nav.users;
+  const navigation = nav.user_navigations;
+  
+  if (!user.expoPushToken) {
+    console.log(`⚠️ No push token for user ${user.id}, skipping...`);
+    await storage.markNavigationSent(navigation.id);
+    continue;
+  }
+  
+  console.log(`📤 Sending notification for ${navigation.stationName} to user ${user.id}`);
+  
+  try {
+    // Get station details for the notification
+    let address = '';
+    let latitude = 0;
+    let longitude = 0;
+    
+    // If it's a database station, get full details
+    if (!navigation.stationId.startsWith('fsq_')) {
+      const stationDetails = await storage.getChangingStation(parseInt(navigation.stationId));
+      if (stationDetails) {
+        address = stationDetails.address;
+        latitude = stationDetails.latitude;
+        longitude = stationDetails.longitude;
       }
     }
+    
+    await sendPushNotification(
+      user.expoPushToken,
+      navigation.stationId,
+      navigation.stationName,
+      address,
+      latitude,
+      longitude
+    );
+    
+    await storage.markNavigationSent(navigation.id);
+    console.log(`✅ Notification sent and marked for navigation ${navigation.id}`);
   } catch (error) {
-    console.error('❌ Error in checkAndSendPendingNotifications:', error);
+    console.error(`❌ Failed to send notification for navigation ${navigation.id}:`, error);
   }
 }
 
