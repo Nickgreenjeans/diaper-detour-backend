@@ -45,66 +45,6 @@ export async function sendPushNotification(
       },
       body: JSON.stringify(message),
     });
-
-    const data = await response.json();
-    console.log('✅ Push notification sent:', data);
-    return data;
-  } catch (error) {
-    console.error('❌ Error sending push notification:', error);
-    throw error;
-  }
-}
-
-export async function checkAndSendPendingNotifications() {
-  console.log('🔔 Checking for pending notifications...');
-  
- import { storage } from './storage';
-
-interface PushNotification {
-  to: string;
-  sound: string;
-  title: string;
-  body: string;
-  data: {
-    stationId: string;
-    stationName: string;
-    address?: string;
-    latitude?: number;
-    longitude?: number;
-  };
-}
-
-export async function sendPushNotification(
-  expoPushToken: string,
-  stationId: string,
-  stationName: string,
-  address?: string,
-  latitude?: number,
-  longitude?: number
-) {
-  const message: PushNotification = {
-    to: expoPushToken,
-    sound: 'default',
-    title: 'How was the changing station? 🚼',
-    body: `Help other parents at ${stationName}`,
-    data: {
-      stationId,
-      stationName,
-      address: address || '',
-      latitude: latitude || 0,
-      longitude: longitude || 0,
-    },
-  };
-  
-  try {
-    const response = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(message),
-    });
     
     const data = await response.json();
     console.log('✅ Push notification sent:', data);
